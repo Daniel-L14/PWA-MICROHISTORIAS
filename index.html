@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Microhistorias — PWA</title>
+  <meta name="theme-color" content="#0f172a">
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#0f172a;
+      --muted:#94a3b8;
+      --text:#e5e7eb;
+      --accent:#22d3ee;
+      --accent-2:#a78bfa;
+      --ring:0 0 0 2px rgba(34,211,238,.35);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+      background: radial-gradient(1200px 700px at 80% -10%, rgba(167,139,250,.15), transparent 60%),
+                  radial-gradient(900px 600px at -10% 110%, rgba(34,211,238,.12), transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center; padding:32px;
+    }
+    .app{
+      width:min(900px,100%);
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.00) 30%) , var(--card);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:calc(var(--radius) + 8px);
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
+    header{
+      display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .title{
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background: radial-gradient(50% 70% at 70% 20%, rgba(255,255,255,.25), transparent 60%),
+                  linear-gradient(135deg, var(--accent), var(--accent-2));
+      display:grid; place-items:center; font-weight:800; color:#0b1020; box-shadow:var(--shadow);
+    }
+    h1{margin:0; font-size:clamp(18px, 2.8vw, 26px);}
+    .muted{color:var(--muted); font-size:14px}
+    .bar{display:flex; gap:8px; flex-wrap:wrap}
+    button{
+      appearance:none; border:none; cursor:pointer; color:var(--text);
+      background:#111829; border:1px solid rgba(148,163,184,.2);
+      padding:10px 14px; border-radius:12px; font-weight:600;
+      transition:.2s transform ease, .2s background ease, .2s box-shadow ease;
+    }
+    button:hover{transform:translateY(-1px)}
+    button:active{transform:translateY(0)}
+    .primary{
+      background:linear-gradient(135deg, rgba(34,211,238,.18), rgba(167,139,250,.18));
+      border-color:rgba(167,139,250,.35);
+      box-shadow:var(--ring);
+    }
+    .danger{border-color:rgba(244,63,94,.45); color:#fecaca; background:linear-gradient(135deg, rgba(244,63,94,.12), rgba(244,63,94,.06))}
+    .ghost{background:transparent}
+    .hidden{display:none !important}
+
+    .output{
+      background:rgba(15,23,42,.7);
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:16px;
+      padding:18px;
+      min-height:76px;
+      font-size:clamp(18px, 3vw, 22px);
+      line-height:1.35;
+      letter-spacing:.15px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.01);
+      margin:10px 0 14px;
+      position:relative;
+    }
+    .counter{
+      position:absolute; bottom:10px; right:12px; font-size:12px; color:var(--muted);
+      opacity:.9;
+    }
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 4px}
+    .chip{
+      font-size:12px; color:var(--muted); padding:6px 10px; border-radius:999px;
+      border:1px dashed rgba(148,163,184,.35);
+      background:rgba(255,255,255,.03);
+    }
+
+    .favorites{
+      margin-top:12px; border-top:1px dashed rgba(148,163,184,.25); padding-top:12px;
+      display:grid; gap:10px;
+    }
+    .fav{
+      background:#0b1227; border:1px solid rgba(148,163,184,.2); border-radius:12px; padding:12px;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+    }
+    .fav span{font-size:15px}
+    .empty{color:var(--muted); text-align:center; padding:24px 8px}
+    footer{margin-top:16px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+    a.link{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <div class="logo" aria-hidden="true">✦</div>
+        <div>
+          <h1>Generador de Microhistorias</h1>
+          <div class="muted">Crea relatos ultracortos (< 200 caracteres), guarda tus favoritas y compártelas.</div>
+        </div>
+      </div>
+      <div class="bar">
+        <button id="newBtn" class="primary">Nueva microhistoria</button>
+        <button id="saveBtn">Guardar favorita</button>
+        <button id="shareBtn">Compartir</button>
+        <button id="installBtn" class="ghost hidden">Instalar</button>
+        <button id="clearBtn" class="danger">Borrar favoritas</button>
+      </div>
+    </header>
+
+    <div class="chips" id="tags"></div>
+
+    <div class="output" id="output" aria-live="polite"></div>
+    <div class="counter" id="counter">0/200</div>
+
+    <footer>
+      <span class="muted">Funciona offline. Tus favoritas se guardan en este dispositivo.</span>
+      <a class="link" href="#" id="exportBtn">Exportar JSON</a>
+    </footer>
+
+    <section class="favorites" id="favorites"></section>
+  </div>
+
+  <script>
+    // ========= Banco de palabras / plantillas =========
+    const GENRES = ["misterio","sci-fi","romance","fantasía","costumbrista","humor","horror","realismo mágico"];
+    const SETTINGS = ["un ascensor detenido","una azotea silenciosa","un tren nocturno","un café vacío","la playa en invierno","una biblioteca cerrando","un pueblo sin relojes","un mercado de madrugada","una parada de bus bajo lluvia","un faro apagado"];
+    const CHARS = ["una botánica impaciente","un violinista tímido","una cronista distraída","un relojero ciego","una niña que colecciona nubes","un cartero que olvida rutas","una piloto jubilada","un chef que odia el sabor dulce","un fantasma puntual","una abogada que habla con plantas"];
+    const OBJECTS = ["una carta sin destinatario","un paraguas perforado","una taza con grieta","una brújula inmóvil","un anillo oxidado","un cuaderno en blanco","un boleto sin fecha","un zapato desparejado","un billete roto","una llave que no abre nada"];
+    const TWISTS = [
+      "el tiempo se dobla por un minuto",
+      "nadie recuerda su nombre, ni ella",
+      "la ciudad bosteza a coro",
+      "aparecen dos lunas",
+      "un desconocido sabe su secreto",
+      "todo huele a naranja",
+      "el mar responde con una palabra",
+      "el semáforo se disculpa",
+      "la sombra se marcha primero",
+      "una radio anuncia lo que aún no pasó"
+    ];
+    const ENDINGS = [
+      "y por fin alguien llega tarde a propósito.",
+      "y se ríen, bajito, para no despertar al sol.",
+      "mientras el reloj finge no mirar.",
+      "como si la nostalgia tuviera dientes.",
+      "y el silencio les abre la puerta.",
+      "hasta que el eco decide quedarse.",
+      "y entienden que perder era el plan.",
+      "con la certeza de que el azar estudia.",
+      "y un perro callejero los adopta.",
+      "antes de que amanezca dos veces."
+    ];
+
+    const TEMPLATES = [
+      "{char} encuentra {obj} en {setting}; {twist}, {ending}",
+      "En {setting}, {char} guarda {obj}; {twist}, {ending}",
+      "{char}, en {setting}, intercambia {obj}: {twist}, {ending}",
+      "Dicen que en {setting}, {char} perdió {obj}; {twist}, {ending}",
+      "Rumor en {setting}: {char} ofrece {obj}; {twist}, {ending}"
+    ];
+
+    // ========= Utilidades =========
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    function composeStory(){
+      const data = {
+        genre: pick(GENRES),
+        setting: pick(SETTINGS),
+        char: pick(CHARS),
+        obj: pick(OBJECTS),
+        twist: pick(TWISTS),
+        ending: pick(ENDINGS)
+      };
+      let story = pick(TEMPLATES)
+        .replace("{setting}", data.setting)
+        .replace("{char}", data.char)
+        .replace("{obj}", data.obj)
+        .replace("{twist}", data.twist)
+        .replace("{ending}", data.ending);
+
+      story = capitalize(story);
+      story = story.replace(/\s+/g, " ").trim();
+      // Asegurar < 200; si no, reintenta unas veces
+      let tries = 0;
+      while (story.length > 200 && tries < 8){
+        data.setting = pick(SETTINGS);
+        data.char = pick(CHARS);
+        data.obj = pick(OBJECTS);
+        data.twist = pick(TWISTS);
+        data.ending = pick(ENDINGS);
+        story = pick(TEMPLATES)
+          .replace("{setting}", data.setting)
+          .replace("{char}", data.char)
+          .replace("{obj}", data.obj)
+          .replace("{twist}", data.twist)
+          .replace("{ending}", data.ending);
+        story = capitalize(story).replace(/\s+/g, " ").trim();
+        tries++;
+      }
+      return { story, tags: [data.genre, data.setting.split(' ')[0]] };
+    }
+
+    function renderStory({story, tags}){
+      $("#output").textContent = story;
+      $("#counter").textContent = `${story.length}/200`;
+      const tagsEl = $("#tags");
+      tagsEl.innerHTML = "";
+      tags.forEach(t => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = `#${t}`;
+        tagsEl.appendChild(chip);
+      });
+    }
+
+    // ========= Favoritos (localStorage) =========
+    const LS_KEY = "microstories:favs";
+
+    function loadFavs(){
+      try{ return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+      catch{ return []; }
+    }
+    function saveFavs(favs){
+      localStorage.setItem(LS_KEY, JSON.stringify(favs.slice(0,200))); // límite razonable
+    }
+    function addFav(text){
+      const favs = loadFavs();
+      if (!text || favs.includes(text)) return;
+      favs.unshift(text);
+      saveFavs(favs);
+      renderFavs();
+    }
+    function clearFavs(){
+      localStorage.removeItem(LS_KEY);
+      renderFavs();
+    }
+    function removeFav(text){
+      saveFavs(loadFavs().filter(f => f !== text));
+      renderFavs();
+    }
+    function renderFavs(){
+      const list = $("#favorites");
+      const favs = loadFavs();
+      list.innerHTML = "";
+      if (!favs.length){
+        list.innerHTML = `<div class="empty">No hay favoritas todavía. Guarda alguna para verla aquí.</div>`;
+        return;
+      }
+      favs.forEach(f => {
+        const row = document.createElement("div");
+        row.className = "fav";
+        const span = document.createElement("span");
+        span.textContent = f;
+        const actions = document.createElement("div");
+        const share = document.createElement("button");
+        share.textContent = "Compartir";
+        share.addEventListener("click", () => webShare(f));
+        const del = document.createElement("button");
+        del.textContent = "Eliminar";
+        del.className = "danger";
+        del.addEventListener("click", () => removeFav(f));
+        actions.append(share, del);
+        row.append(span, actions);
+        list.appendChild(row);
+      });
+    }
+
+    async function webShare(text){
+      if (navigator.share){
+        try{
+          await navigator.share({ text });
+        }catch{}
+      }else{
+        await navigator.clipboard?.writeText(text);
+        alert("Copiado al portapapeles ✔");
+      }
+    }
+
+    // ========= Exportar JSON =========
+    $("#exportBtn").addEventListener("click", (e)=>{
+      e.preventDefault();
+      const data = loadFavs();
+      const blob = new Blob([JSON.stringify({ exportedAt:new Date().toISOString(), items:data }, null, 2)], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "microhistorias_favoritas.json";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // ========= Generar, Guardar, Compartir =========
+    function newStory(){
+      const s = composeStory();
+      renderStory(s);
+    }
+    $("#newBtn").addEventListener("click", newStory);
+    $("#saveBtn").addEventListener("click", () => addFav($("#output").textContent.trim()));
+    $("#shareBtn").addEventListener("click", () => webShare($("#output").textContent.trim()));
+    $("#clearBtn").addEventListener("click", () => {
+      if (confirm("¿Borrar todas las favoritas?")) clearFavs();
+    });
+
+    // ========= PWA: Manifest dinámico + Service Worker =========
+    // Crea íconos PNG como dataURL (sin archivos externos)
+    function makeIcon(size, emoji="✦"){
+      const c = document.createElement("canvas");
+      c.width = c.height = size;
+      const ctx = c.getContext("2d");
+      // fondo degradado
+      const g = ctx.createLinearGradient(0,0,size,size);
+      g.addColorStop(0,"#22d3ee");
+      g.addColorStop(1,"#a78bfa");
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,size,size);
+      // emoji
+      ctx.font = `${Math.floor(size*0.58)}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#0b1020";
+      ctx.fillText(emoji, size/2, size/2 + size*0.02);
+      return c.toDataURL("image/png");
+    }
+
+    (function setupManifest(){
+      const icon192 = makeIcon(192);
+      const icon512 = makeIcon(512);
+      const manifest = {
+        name: "Microhistorias",
+        short_name: "Microhistorias",
+        description: "Genera relatos ultracortos, guarda tus favoritas y compártelas. Funciona offline.",
+        start_url: ".",
+        scope: ".",
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [
+          { src: icon192, sizes: "192x192", type: "image/png" },
+          { src: icon512, sizes: "512x512", type: "image/png" }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = url;
+      document.head.appendChild(link);
+      // libera más tarde
+      window.addEventListener("beforeunload", ()=> URL.revokeObjectURL(url), {once:true});
+    })();
+
+    // Service Worker inline (registrado desde un Blob)
+    (function registerSW(){
+      if (!("serviceWorker" in navigator)) return;
+      const swCode = `
+        const CACHE = "microstories-v1";
+        const ASSETS = ["./"];
+        self.addEventListener("install", e => {
+          e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(()=> self.skipWaiting()));
+        });
+        self.addEventListener("activate", e => {
+          e.waitUntil(
+            caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+            .then(() => self.clients.claim())
+          );
+        });
+        self.addEventListener("fetch", e => {
+          const req = e.request;
+          // Estrategia: network-first para la página; cache-first para estáticos simples
+          e.respondWith(
+            fetch(req).then(res => {
+              const copy = res.clone();
+              caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
+              return res;
+            }).catch(() => caches.match(req))
+          );
+        });
+      `;
+      const blob = new Blob([swCode], {type:"text/javascript"});
+      const url = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(url).catch(()=>{});
+      window.addEventListener("beforeunload", ()=> URL.revokeObjectURL(url), {once:true});
+    })();
+
+    // Botón Instalar (beforeinstallprompt)
+    let deferredPrompt = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      $("#installBtn").classList.remove("hidden");
+    });
+    $("#installBtn").addEventListener("click", async ()=>{
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      $("#installBtn").classList.add("hidden");
+      deferredPrompt = null;
+    });
+
+    // ========= Inicio =========
+    renderFavs();
+    newStory();
+  </script>
+</body>
+</html>
